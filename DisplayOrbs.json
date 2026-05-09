@@ -2,7 +2,7 @@
   "id": "DisplayOrbs",
   "name": "DisplayOrbs",
   "author": "chunker",
-  "description": "Quick and dirty way to display dynamic combat information by utilizing the Defect's orb slots.",
+  "description": "Quick and dirty way to display dynamic combat information (eg. stacks of a power or relic) by utilizing the Defect's orb slots.",
   "version": "v1.0.0",
   "has_pck": true,
   "has_dll": true,
