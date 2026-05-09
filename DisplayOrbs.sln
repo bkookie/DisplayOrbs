@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37216.2 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DisplayOrbs", "DisplayOrbs.csproj", "{D4C213EA-863B-470C-8B91-D9CBC2DAB269}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		ExportDebug|Any CPU = ExportDebug|Any CPU
+		ExportRelease|Any CPU = ExportRelease|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D4C213EA-863B-470C-8B91-D9CBC2DAB269}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4C213EA-863B-470C-8B91-D9CBC2DAB269}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4C213EA-863B-470C-8B91-D9CBC2DAB269}.ExportDebug|Any CPU.ActiveCfg = ExportDebug|Any CPU
+		{D4C213EA-863B-470C-8B91-D9CBC2DAB269}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU
+		{D4C213EA-863B-470C-8B91-D9CBC2DAB269}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU
+		{D4C213EA-863B-470C-8B91-D9CBC2DAB269}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {21B0EC78-294D-4D19-912B-FFD0BC58B97A}
+	EndGlobalSection
+EndGlobal
