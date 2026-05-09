@@ -3,7 +3,7 @@
   "name": "DisplayOrbs",
   "author": "chunker",
   "description": "Quick and dirty way to display dynamic combat information by utilizing the Defect's orb slots.",
-  "version": "v0.0.0",
+  "version": "v1.0.0",
   "has_pck": true,
   "has_dll": true,
   "affects_gameplay": true,
