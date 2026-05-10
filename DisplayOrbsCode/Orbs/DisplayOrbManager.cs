@@ -94,7 +94,7 @@ public static class DisplayOrbManager
 
             if (kvp.Key.player == player)
             {
-                _ = taskQueue.EnqueueAsync(() => (Task)kvp.Value.Invoke(null, [choiceContext, kvp.Key.player, orbGen])!); // Calls the generic TryChannelPreferredNumberOfDisplayOrbs<T>
+                _ = taskQueue.EnqueueAsync(() => (Task)kvp.Value.Invoke(null, [choiceContext, kvp.Key.player, orbGen])!); // Calls the generic RefreshOrbs<T>
             }
 
             if (orbGen.ShouldDeregister)
