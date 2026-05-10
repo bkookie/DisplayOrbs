@@ -25,6 +25,7 @@ public static class DisplayOrbManager
     }
 
     private static readonly Dictionary<(Player player, IDisplayOrbGenerator orbGenerator), MethodInfo> OrbGenerators = [];
+    private static readonly OrderedTaskQueue  taskQueue = new OrderedTaskQueue();
 
     /// <summary>
     /// Registers an <see cref="IDisplayOrbGenerator{T}"/> for the supplied <paramref name="player"/>, so it's DisplayOrbs can be refreshed automatically.
@@ -87,10 +88,9 @@ public static class DisplayOrbManager
         {
             IDisplayOrbGenerator orbGen = kvp.Key.orbGenerator;
 
-            if (kvp.Key.player == player && !orbGen.IsRefreshing)
+            if (kvp.Key.player == player)
             {
-                orbGen.IsRefreshing = true;
-                kvp.Value.Invoke(null, [choiceContext, kvp.Key.player, orbGen]); // Calls the generic TryChannelPreferredNumberOfDisplayOrbs<T>
+                _ = taskQueue.EnqueueAsync(() => (Task)kvp.Value.Invoke(null, [choiceContext, kvp.Key.player, orbGen])!); // Calls the generic TryChannelPreferredNumberOfDisplayOrbs<T>
             }
 
             if (orbGen.ShouldDeregister)
@@ -105,10 +105,7 @@ public static class DisplayOrbManager
         OrbQueue? orbQueue = player?.PlayerCombatState?.OrbQueue;
 
         if (player == null || orbQueue == null)
-        {
-            orbGenerator.IsRefreshing = false;
             return;
-        }
 
         int currentNumOrbs = orbQueue.Orbs.Count(orb => orb is T);
         int preferredNumOrbs = orbGenerator.PreferredNumberOfOrbs;
@@ -130,8 +127,6 @@ public static class DisplayOrbManager
                 EvokeDisplayOrb<T>(player, removeCapacity: true);
             }
         }
-
-        orbGenerator.IsRefreshing = false;
     }
 
     /// <summary>

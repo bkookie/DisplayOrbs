@@ -8,11 +8,6 @@ public interface IDisplayOrbGenerator<T> : IDisplayOrbGenerator where T : Displa
 public interface IDisplayOrbGenerator
 {
     /// <summary>
-    /// Does not require any special logic (Just keep as auto-property). Used by <see cref="DisplayOrbManager"/>.
-    /// </summary>
-    public bool IsRefreshing { get; set; }
-
-    /// <summary>
     /// Whether this should get deregistered. Checked after refreshing orbs.
     /// </summary>
     public bool ShouldDeregister { get; }
