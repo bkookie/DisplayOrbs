@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Orbs;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
@@ -29,7 +28,7 @@ public static class DisplayOrbManager
     }
 
     private static readonly Dictionary<(Player player, IDisplayOrbGenerator orbGenerator), MethodInfo> OrbGenerators = [];
-    private static readonly OrderedTaskQueue  taskQueue = new OrderedTaskQueue();
+    private static readonly OrderedTaskQueue taskQueue = new OrderedTaskQueue();
 
     /// <summary>
     /// Registers an <see cref="IDisplayOrbGenerator{T}"/> for the supplied <paramref name="player"/>, so it's DisplayOrbs can be refreshed automatically.
@@ -149,12 +148,17 @@ public static class DisplayOrbManager
         OrbModel newOrb = ModelDb.Orb<T>().ToMutable();
         newOrb.Owner = player;
 
-        await OrbCmd.AddSlots(player, 1);
+        orbQueue.AddCapacity(1);
+        nOrbMan.AddSlotAnim(1);
 
-        if (await orbQueue.TryEnqueue(newOrb) && newOrb.ChannelSfx != "")
+        if (await orbQueue.TryEnqueue(newOrb))
         {
             nOrbMan.AddOrbAnim();
-            newOrb.PlayChannelSfx();
+
+            if (newOrb.ChannelSfx != "")
+            {
+                newOrb.PlayChannelSfx();
+            }
         }
     }
 
