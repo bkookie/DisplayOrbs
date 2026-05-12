@@ -2,6 +2,8 @@
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Models;
 
 namespace DisplayOrbs.DisplayOrbsCode.Patches;
 
@@ -9,9 +11,9 @@ namespace DisplayOrbs.DisplayOrbsCode.Patches;
 public static class OrbAddCapacityPatch
 {
     [HarmonyPrefix]
-    private static void OrbAddCapacity(Player player, ref int amount)
+    private static bool OrbAddCapacity(Player player, int amount)
     {
-        amount = DisplayOrbManager.PrepareToAddSlots(player, amount);
+        return DisplayOrbManager.PrepareToAddSlots(player, amount);
     }
 }
 
@@ -19,17 +21,21 @@ public static class OrbAddCapacityPatch
 public static class OrbRemoveCapacityPatch
 {
     [HarmonyPrefix]
-    private static void OrbRemoveCapacity(Player player, ref int amount, out bool __state)
+    private static bool OrbRemoveCapacity(Player player, int amount)
     {
-        amount = DisplayOrbManager.PrepareToRemoveSlots(player, amount, out __state);
+        return DisplayOrbManager.PrepareToRemoveSlots(player, amount);
     }
+}
 
-    [HarmonyPostfix]
-    private static void OrbRemoveCapacityFinalize(Player player, bool __state)
+[HarmonyPatch(typeof(OrbCmd), nameof(OrbCmd.Channel), [typeof(PlayerChoiceContext), typeof(OrbModel), typeof(Player)])]
+public static class OrbChannelPatch
+{
+    [HarmonyPrefix]
+    private static void OrbChannel(OrbModel orb, Player player)
     {
-        if (__state)
+        if (orb is not DisplayOrbModel)
         {
-            DisplayOrbManager.RefreshAllOrbs(player);
+            DisplayOrbManager.PrepareToChannel(player);
         }
     }
 }
@@ -74,3 +80,38 @@ public static class OrbEvokeLastPatch
         }
     }
 }
+
+////[HarmonyPatch(typeof(OrbCmd), nameof(OrbCmd.Channel), [typeof(PlayerChoiceContext), typeof(OrbModel), typeof(Player)])]
+//[HarmonyPatch("<Channel>d__3", "MoveNext")]
+//public static class ChannelPatch
+//{
+//    [HarmonyTranspiler]
+//    private static IEnumerable<CodeInstruction> Channel(IEnumerable<CodeInstruction> instructions)
+//    {
+//        List<CodeInstruction> codes = [.. instructions];
+
+//        MethodInfo referenceMethod = AccessTools.PropertyGetter(typeof(OrbQueue), nameof(OrbQueue.Capacity));
+//        bool foundFirst = false; // Looking for second instance of OrbQueue.get_Capacity()
+
+//        for (int i = 0; i < codes.Count; i++)
+//        {
+//            if (codes[i].Calls(referenceMethod))
+//            {
+//                if (!foundFirst)
+//                {
+//                    foundFirst = true;
+//                }
+//                else
+//                {
+//                    // Replace "if (orbQueue.Orbs.Count >= orbQueue.Capacity)" with "if (orbQueue.Orbs.Count >= 10)", since orbQueue.Capacity may be over 10
+//                    codes.RemoveAt(i--);
+//                    codes.RemoveAt(i);
+//                    codes.Insert(i, new CodeInstruction(OpCodes.Ldc_I4, DisplayOrbManager.DefaultMaxOrbCapacity));
+//                    break;
+//                }
+//            }
+//        }
+
+//        return codes;
+//    }
+//}

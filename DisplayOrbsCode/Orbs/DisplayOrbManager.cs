@@ -13,22 +13,50 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Orbs;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
-using MegaCrit.Sts2.Core.Runs;
 
 namespace DisplayOrbs.DisplayOrbsCode.Orbs;
 
 public static class DisplayOrbManager
 {
-    public const int MaxOrbCapacity = 10;
+    public const int DefaultMaxOrbCapacity = 10;
 
     static DisplayOrbManager()
     {
-        RunManager.Instance.RunStarted += _ => OrbGenerators.Clear();
-        RunManager.Instance.RoomExited += OrbGenerators.Clear;
+        CombatManager.Instance.CombatSetUp += _ => Reset();
+        CombatManager.Instance.CombatEnded += _ => Reset();
     }
 
+    private static readonly Dictionary<Player, int> MaxDisplayOrbSlots = [];
     private static readonly Dictionary<(Player player, IDisplayOrbGenerator orbGenerator), MethodInfo> OrbGenerators = [];
     private static readonly OrderedTaskQueue taskQueue = new OrderedTaskQueue();
+
+    private static void Reset()
+    {
+        MaxDisplayOrbSlots.Clear();
+        OrbGenerators.Clear();
+    }
+
+    /// <summary>
+    /// Set the maximun number of DisplayOrb slots for a player (min 10). Does not affect real orbs.
+    /// </summary>
+    /// <param name="player">The player to set for.</param>
+    /// <param name="maxOrbSlots">The maximun number of orb slots that can be active.</param>
+    public static void SetMaxDisplayOrbSlots(Player player, int maxOrbSlots)
+    {
+        MaxDisplayOrbSlots[player] = Math.Max(10, maxOrbSlots);
+    }
+
+    private static int MaxDisplayOrbSlotsByPlayer(Player player)
+    {
+        if (MaxDisplayOrbSlots.TryGetValue(player, out int value))
+        {
+            return value;
+        }
+        else
+        {
+            return DefaultMaxOrbCapacity;
+        }
+    }
 
     /// <summary>
     /// Registers an <see cref="IDisplayOrbGenerator{T}"/> for the supplied <paramref name="player"/>, so it's DisplayOrbs can be refreshed automatically.
@@ -118,7 +146,7 @@ public static class DisplayOrbManager
         {
             choiceContext ??= new BlockingPlayerChoiceContext();
 
-            for (int i = currentNumOrbs; i < preferredNumOrbs && i < MaxOrbCapacity; i++) // No point to channel more than 10 orbs
+            for (int i = currentNumOrbs; i < preferredNumOrbs && i < MaxDisplayOrbSlotsByPlayer(player); i++) // No point to channel more than 10 orbs
             {
                 await ChannelDisplayOrb<T>(choiceContext, player);
             }
@@ -142,14 +170,13 @@ public static class DisplayOrbManager
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
         NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
 
-        if (CombatManager.Instance.IsOverOrEnding || orbQueue == null || nOrbMan == null || orbQueue.Capacity >= MaxOrbCapacity)
+        if (CombatManager.Instance.IsOverOrEnding || orbQueue == null || nOrbMan == null || orbQueue.Capacity >= MaxDisplayOrbSlotsByPlayer(player))
             return;
 
         OrbModel newOrb = ModelDb.Orb<T>().ToMutable();
         newOrb.Owner = player;
 
-        orbQueue.AddCapacity(1);
-        nOrbMan.AddSlotAnim(1);
+        AddOrbSlots(orbQueue, nOrbMan, 1);
 
         if (await orbQueue.TryEnqueue(newOrb))
         {
@@ -244,7 +271,7 @@ public static class DisplayOrbManager
     /// Moves the back-most real orb all the way to the back, so it can be removed along with a slot.
     /// </summary>
     /// <param name="player">The player who's orb you are trying to move.</param>
-    /// <returns><see langword="true"/> if an orb was moved.</returns>
+    /// <returns><see langword="true"/> if a real orb is in the last slot.</returns>
     public static bool PushRealOrbToBack(Player player)
     {
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
@@ -266,9 +293,16 @@ public static class DisplayOrbManager
         {
             if (orbQueue.Orbs[i] is not DisplayOrbModel)
             {
-                // Find the last real orb
-                orbToMove = orbQueue.Orbs[i];
-                moveFromIndex = i;
+                // Find the last real orb. If it's already last in queue, no action necessary
+                if (i == orbQueue.Orbs.Count - 1)
+                {
+                    return true;
+                }
+                else
+                {
+                    orbToMove = orbQueue.Orbs[i];
+                    moveFromIndex = i;
+                }
                 break;
             }
         }
@@ -296,61 +330,139 @@ public static class DisplayOrbManager
         return true;
     }
 
-    /// <summary>
-    /// Remove DisplayOrbs to make room for real orbs.
-    /// </summary>
-    /// <returns>
-    /// The number of slots that are still required to be added, after removing any DisplayOrbs.
-    /// </returns>
-    public static int PrepareToAddSlots(Player player, int amount)
+    private static void AddOrbSlots(Player player, int amount)
     {
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
+        NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
 
-        if (orbQueue == null)
-            return amount;
-
-        int numDisplayOrbsRemoved = 0;
-
-        int i = orbQueue.Orbs.Count - 1;
-        int overCap = orbQueue.Capacity + amount - MaxOrbCapacity;
-        for (; i >= 0 && overCap > 0; i--, overCap--)
+        if (orbQueue != null && nOrbMan != null)
         {
-            if (orbQueue.Orbs[i] is not DisplayOrbModel)
-                break;
-
-            if (EvokeDisplayOrb<DisplayOrbModel>(player, removeCapacity: false))
-                numDisplayOrbsRemoved++;
+            AddOrbSlots(orbQueue, nOrbMan, amount);
         }
+    }
 
-        return amount - numDisplayOrbsRemoved;
+    private static void AddOrbSlots(OrbQueue orbQueue, NOrbManager nOrbMan, int amount)
+    {
+        if (amount > 0)
+        {
+            orbQueue.AddCapacity(amount);
+            nOrbMan.AddSlotAnim(amount);
+        }
+    }
+
+    private static void RemoveOrbSlots(Player player, int amount)
+    {
+        OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
+        NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
+
+        if (orbQueue != null && nOrbMan != null)
+        {
+            RemoveOrbSlots(orbQueue, nOrbMan, amount);
+        }
+    }
+
+    private static void RemoveOrbSlots(OrbQueue orbQueue, NOrbManager nOrbMan, int amount)
+    {
+        if (amount > 0)
+        {
+            orbQueue.RemoveCapacity(amount);
+            nOrbMan.RemoveSlotAnim(amount);
+        }
     }
 
     /// <summary>
-    /// Moves real orbs to the back if necessary, so they will be removed along with the removed slots.
+    /// Remove DisplayOrbs to make room for real orbs if necessary, then manually adds the orb slots (avoiding OrbCmd.AddSlots)
     /// </summary>
     /// <returns>
-    /// The number of modified number of slots that should be removed, considering that DisplayOrbs and their slots should not be removed.
+    /// <see langword="true"/> if OrbCmd.AddSlots should still be executed, otherwise <see langword="false"/> to skip it.
     /// </returns>
-    public static int PrepareToRemoveSlots(Player player, int amount, out bool refreshNeeded)
+    internal static bool PrepareToAddSlots(Player player, int amount)
     {
-        refreshNeeded = false;
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
 
         if (orbQueue == null)
-            return amount;
+            return true;
 
-        if (orbQueue.Capacity - orbQueue.Orbs.Count >= amount)
+        // Even adding 0 slots through OrbCmd.AddSlots may result in it actually removing slots isntead, when you are over the default orb limit
+        // So dont let OrbCmd try add any slots.
+
+        int numDisplayOrbs = orbQueue.Orbs.Count(orb => orb is DisplayOrbModel);
+        int realOrbCapacity = orbQueue.Capacity - numDisplayOrbs;
+
+
+        int overCap = orbQueue.Capacity + amount - MaxDisplayOrbSlotsByPlayer(player);
+        int overDefaultCap = realOrbCapacity + amount - DefaultMaxOrbCapacity;
+        int availableDefaultCap = DefaultMaxOrbCapacity - realOrbCapacity;
+
+        if (availableDefaultCap > 0)
         {
-            refreshNeeded = true;
-            return amount;
+            int numDisplayOrbsRemoved = 0;
+
+            for (int i = orbQueue.Orbs.Count - 1; i >= 0 && overCap > 0 && availableDefaultCap > 0; i--, overCap--, availableDefaultCap--)
+            {
+                if (orbQueue.Orbs[i] is not DisplayOrbModel)
+                    break;
+
+                if (EvokeDisplayOrb<DisplayOrbModel>(player, removeCapacity: false))
+                    numDisplayOrbsRemoved++;
+            }
+
+            int slotsToAdd = Math.Min(availableDefaultCap, amount - numDisplayOrbsRemoved);
+            AddOrbSlots(player, slotsToAdd);
         }
 
-        for (int i = 0; i < amount; i++)
+        return false;
+    }
+
+    /// <summary>
+    /// Moves real orbs to the back if necessary, so they will be removed along with the removed slots, then manually removes the orb slots (avoiding OrbCmd.RemoveSlots)
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> if OrbCmd.RemoveSlots should still be executed, otherwise <see langword="false"/> to skip it.
+    /// </returns>
+    internal static bool PrepareToRemoveSlots(Player player, int amount)
+    {
+        OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
+        NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
+
+        if (orbQueue == null || nOrbMan == null)
+            return true;
+
+        int numEmptySlotsToRemove = Math.Min(amount, orbQueue.Capacity - orbQueue.Orbs.Count);
+        int numRemainingSlotsToRemove = amount - numEmptySlotsToRemove;
+
+        RemoveOrbSlots(player, numEmptySlotsToRemove); // Remove any empty slots first
+
+        for (int i = 0; i < numRemainingSlotsToRemove; i++)
         {
-            refreshNeeded |= PushRealOrbToBack(player);
+            if (PushRealOrbToBack(player))
+            {
+                RemoveOrbSlots(orbQueue, nOrbMan, 1);
+            }
+            else
+            {
+                break; // No more real orbs (or empty slots), removing slots has not further effect
+            }
         }
 
-        return Math.Min(amount, orbQueue.Orbs.Count(orb => orb is not DisplayOrbModel));
+        RefreshAllOrbs(player);
+
+        return false;
+    }
+
+    /// <summary>
+    /// Adds the first real orb slot, if there are none.
+    /// </summary>
+    /// <param name="player">The player who is channelling.</param>
+    internal static void PrepareToChannel(Player player)
+    {
+        OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
+
+        if (orbQueue != null && orbQueue.Capacity > 0 && orbQueue.Orbs.Count == orbQueue.Capacity && orbQueue.Orbs.All(o => o is DisplayOrbModel))
+        {
+            // When all orb slots are full and are DisplayOrbs, this is same as having no orbs slots at all, and need to add the first orb slot
+            AddOrbSlots(player, 1);
+        }
     }
 
     /// <summary>
