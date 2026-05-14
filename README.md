@@ -9,5 +9,7 @@ Usage:
 1. Create your own DisplayOrb class, inheriting from DisplayOrbModel
 2. Implement IDisplayOrbGenerator\<T> on a class of your choosing
 3. Call the following two methods from the above class:
-	- DisplayOrbManager.Register(Owner.Player, this) - Allows for automatic refreshing of this IDisplayOrbGenerator\<T>
+    - DisplayOrbManager.Register(Owner.Player, this) - Allows for automatic refreshing of this IDisplayOrbGenerator\<T>
     - DisplayOrbManager.RefreshAllOrbs(choiceContext, Owner.Player) - Manually refresh all DisplayOrbs for this player (eg. when power amount changes)
+4. You can set the maximumn number of orb slots for a character (for DisplayOrbs only, min 10, must be performed each comabat)
+    - CombatManager.Instance.CombatSetUp += combatState => combatState.Players.DoIf(p => p.Character is MyCustomChar, p => DisplayOrbManager.SetMaxDisplayOrbSlots(p, 20))

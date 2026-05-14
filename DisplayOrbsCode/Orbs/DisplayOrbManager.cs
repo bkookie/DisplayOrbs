@@ -39,6 +39,7 @@ public static class DisplayOrbManager
     /// <summary>
     /// Set the maximun number of DisplayOrb slots for a player (min 10). Does not affect real orbs.
     /// </summary>
+    /// <remarks>Must be applied each combat.</remarks>
     /// <param name="player">The player to set for.</param>
     /// <param name="maxOrbSlots">The maximun number of orb slots that can be active.</param>
     public static void SetMaxDisplayOrbSlots(Player player, int maxOrbSlots)
