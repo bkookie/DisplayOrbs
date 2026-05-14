@@ -1,4 +1,5 @@
-﻿using DisplayOrbs.DisplayOrbsCode.Orbs;
+﻿using System.Threading.Tasks;
+using DisplayOrbs.DisplayOrbsCode.Orbs;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -11,9 +12,13 @@ namespace DisplayOrbs.DisplayOrbsCode.Patches;
 public static class OrbAddCapacityPatch
 {
     [HarmonyPrefix]
-    private static bool OrbAddCapacity(Player player, int amount)
+    private static bool OrbAddCapacity(Player player, int amount, ref Task __result)
     {
-        return DisplayOrbManager.PrepareToAddSlots(player, amount);
+        if (DisplayOrbManager.PrepareToAddSlots(player, amount))
+            return true;
+
+        __result = Task.CompletedTask;
+        return false;
     }
 }
 
