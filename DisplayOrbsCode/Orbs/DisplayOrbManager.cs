@@ -458,7 +458,7 @@ public static class DisplayOrbManager
     {
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
 
-        if (orbQueue != null && orbQueue.Capacity > 0 && orbQueue.Orbs.Count == orbQueue.Capacity && orbQueue.Orbs.All(o => o is DisplayOrbModel))
+        if (orbQueue != null && orbQueue.Orbs.Count == orbQueue.Capacity && orbQueue.Orbs.All(o => o is DisplayOrbModel))
         {
             // When all orb slots are full and are DisplayOrbs, this is same as having no orbs slots at all, and need to add the first orb slot
             AddOrbSlots(player, 1);
