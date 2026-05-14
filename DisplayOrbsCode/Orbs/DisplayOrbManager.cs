@@ -233,7 +233,7 @@ public static class DisplayOrbManager
     /// </summary>
     /// <param name="player">The player who's orb you are trying to move.</param>
     /// <param name="orbToMove">The orb to move.</param>
-    public static void PushRealOrbToFront(Player player, OrbModel orbToMove)
+    internal static void PushRealOrbToFront(Player player, OrbModel orbToMove)
     {
         if (CombatManager.Instance.IsOverOrEnding)
             return;
@@ -273,7 +273,7 @@ public static class DisplayOrbManager
     /// </summary>
     /// <param name="player">The player who's orb you are trying to move.</param>
     /// <returns><see langword="true"/> if a real orb is in the last slot.</returns>
-    public static bool PushRealOrbToBack(Player player)
+    internal static bool PushRealOrbToBack(Player player)
     {
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
         NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
@@ -471,7 +471,7 @@ public static class DisplayOrbManager
     /// </summary>
     /// <param name="player">The player who is performing the evoke.</param>
     /// <param name="removeSlotRequired">Set to <see langword="true"/> if the evoked orb will be a DisplayOrb, such that it's slot should also be removed.</param>
-    public static void PrepareToEvokeNext(Player player, out bool removeSlotRequired)
+    internal static void PrepareToEvokeNext(Player player, out bool removeSlotRequired)
     {
         // If no real orbs are there, a DisplayOrb will get evoked (but will refresh immediately)
         IReadOnlyList<OrbModel>? orbs = player.PlayerCombatState?.OrbQueue.Orbs;
@@ -484,7 +484,7 @@ public static class DisplayOrbManager
     /// <remarks>The are currently no hooks to prevent an orb from evoking, so this may evoke a DisplayOrb.</remarks>
     /// <param name="player">The player who is performing the evoke.</param>
     /// <param name="removeSlotRequired">Set to <see langword="true"/> if the evoked orb will be a DisplayOrb, such that it's slot should also be removed.</param>
-    public static void PrepareToEvokeLast(Player player, out bool removeSlotRequired)
+    internal static void PrepareToEvokeLast(Player player, out bool removeSlotRequired)
     {
         // If no real orbs are there, a DisplayOrb will get evoked (but will refresh immediately)
         removeSlotRequired = !PushRealOrbToBack(player);
