@@ -2,17 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
-using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Orbs;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Orbs;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Runs;
 
 namespace DisplayOrbs.DisplayOrbsCode.Orbs;
 
@@ -20,15 +20,18 @@ public static class DisplayOrbManager
 {
     public const int DefaultMaxOrbCapacity = 10;
 
+    private static readonly Logger logger = new Logger(MainFile.ModId, LogType.Generic);
+
     static DisplayOrbManager()
     {
-        CombatManager.Instance.CombatSetUp += _ => Reset();
+        // Mods should use CombatManager.Instance.CombatStarted to call SetMaxDisplayOrbSlots()
+        RunManager.Instance.RunStarted += _ => Reset();
         CombatManager.Instance.CombatEnded += _ => Reset();
     }
 
     private static readonly Dictionary<Player, int> MaxDisplayOrbSlots = [];
     private static readonly Dictionary<(Player player, IDisplayOrbGenerator orbGenerator), MethodInfo> OrbGenerators = [];
-    private static readonly OrderedTaskQueue taskQueue = new OrderedTaskQueue();
+    //private static readonly OrderedTaskQueue taskQueue = new OrderedTaskQueue();
 
     private static void Reset()
     {
@@ -116,31 +119,48 @@ public static class DisplayOrbManager
         if (CombatManager.Instance.IsOverOrEnding)
             return;
 
-        foreach (var kvp in OrbGenerators.ToArray())
+        bool needRefresh = true;
+
+        try
         {
-            IDisplayOrbGenerator orbGen = kvp.Key.orbGenerator;
-
-            if (kvp.Key.player == player)
+            while (needRefresh) // If any orbs were removed, check all generators again, as there is more room to channel them now.
             {
-                _ = taskQueue.EnqueueAsync(() => (Task)kvp.Value.Invoke(null, [choiceContext, kvp.Key.player, orbGen])!); // Calls the generic RefreshOrbs<T>
-            }
+                needRefresh = false;
 
-            if (orbGen.ShouldDeregister)
-            {
-                OrbGenerators.Remove(kvp.Key);
+                foreach (var kvp in OrbGenerators.ToArray())
+                {
+                    IDisplayOrbGenerator orbGen = kvp.Key.orbGenerator;
+
+                    if (kvp.Key.player == player)
+                    {
+                        //_ = taskQueue.EnqueueAsync(() => (Task)kvp.Value.Invoke(null, [choiceContext, kvp.Key.player, orbGen])!); // Calls the generic RefreshOrbs<T>
+                        needRefresh = (bool)kvp.Value.Invoke(null, [choiceContext, kvp.Key.player, orbGen])!; // Calls the generic RefreshOrbs<T>
+                    }
+
+                    if (orbGen.ShouldDeregister)
+                    {
+                        OrbGenerators.Remove(kvp.Key);
+                    }
+                }
             }
+        }
+        finally
+        {
+            CheckOrbQueuesAreInSync(player);
         }
     }
 
-    private static async Task RefreshOrbs<T>(PlayerChoiceContext? choiceContext, Player? player, IDisplayOrbGenerator<T> orbGenerator) where T : DisplayOrbModel
+    private static bool RefreshOrbs<T>(PlayerChoiceContext? choiceContext, Player? player, IDisplayOrbGenerator<T> orbGenerator) where T : DisplayOrbModel
     {
         OrbQueue? orbQueue = player?.PlayerCombatState?.OrbQueue;
 
         if (player == null || orbQueue == null)
-            return;
+            return false;
 
         int currentNumOrbs = orbQueue.Orbs.Count(orb => orb is T);
         int preferredNumOrbs = orbGenerator.PreferredNumberOfOrbs;
+
+        bool orbEvoked = false;
 
         // Add or remove orbs to match power amount
         if (currentNumOrbs < preferredNumOrbs)
@@ -149,14 +169,33 @@ public static class DisplayOrbManager
 
             for (int i = currentNumOrbs; i < preferredNumOrbs && i < MaxDisplayOrbSlotsByPlayer(player); i++) // No point to channel more than 10 orbs
             {
-                await ChannelDisplayOrb<T>(choiceContext, player);
+                ChannelDisplayOrb<T>(choiceContext, player);
             }
         }
         else if (currentNumOrbs > preferredNumOrbs)
         {
             for (int i = 0; i < currentNumOrbs - preferredNumOrbs; i++)
             {
-                EvokeDisplayOrb<T>(player, removeCapacity: true);
+                orbEvoked |= EvokeDisplayOrb<T>(player, removeCapacity: true);
+            }
+        }
+
+        return orbEvoked;
+    }
+
+    private static void CheckOrbQueuesAreInSync(Player player)
+    {
+        OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
+        NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
+
+        if (orbQueue != null && nOrbMan != null)
+        {
+            List<OrbModel> orbs = [.. orbQueue._orbs];
+            List<OrbModel> orbs2 = [.. nOrbMan._orbs.Select(nOrb => nOrb.Model)];
+
+            if (!Enumerable.SequenceEqual(orbs, orbs2))
+            {
+                logger.Error("Orb queues are out of sync.");
             }
         }
     }
@@ -166,7 +205,7 @@ public static class DisplayOrbManager
     /// </summary>
     /// <typeparam name="T">The type of the orb.</typeparam>
     /// <param name="player">The player who is channeling the orb.</param>
-    public static async Task ChannelDisplayOrb<T>(PlayerChoiceContext choiceContext, Player player) where T : DisplayOrbModel
+    public static void ChannelDisplayOrb<T>(PlayerChoiceContext choiceContext, Player player) where T : DisplayOrbModel
     {
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
         NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
@@ -179,14 +218,12 @@ public static class DisplayOrbManager
 
         AddOrbSlots(orbQueue, nOrbMan, 1);
 
-        if (await orbQueue.TryEnqueue(newOrb))
-        {
-            nOrbMan.AddOrbAnim();
+        orbQueue._orbs.Add(newOrb);
+        nOrbMan.AddOrbAnim();
 
-            if (newOrb.ChannelSfx != "")
-            {
-                newOrb.PlayChannelSfx();
-            }
+        if (newOrb.ChannelSfx != "")
+        {
+            newOrb.PlayChannelSfx();
         }
     }
 
