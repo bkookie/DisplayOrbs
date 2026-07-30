@@ -146,7 +146,7 @@ public static class DisplayOrbManager
         }
         finally
         {
-            CheckOrbQueuesAreInSync(player);
+            AssertOrbQueuesAreInSync(player);
         }
     }
 
@@ -183,7 +183,7 @@ public static class DisplayOrbManager
         return orbEvoked;
     }
 
-    private static void CheckOrbQueuesAreInSync(Player player)
+    private static void AssertOrbQueuesAreInSync(Player player)
     {
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
         NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
@@ -191,9 +191,9 @@ public static class DisplayOrbManager
         if (orbQueue != null && nOrbMan != null)
         {
             List<OrbModel> orbs = [.. orbQueue._orbs];
-            List<OrbModel> orbs2 = [.. nOrbMan._orbs.Select(nOrb => nOrb.Model)];
+            List<OrbModel> nOrbs = [.. nOrbMan._orbs.Select(nOrb => nOrb.Model)];
 
-            if (!Enumerable.SequenceEqual(orbs, orbs2))
+            if (!Enumerable.SequenceEqual(orbs, nOrbs))
             {
                 logger.Error("Orb queues are out of sync.");
             }
