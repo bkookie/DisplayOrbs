@@ -8,6 +8,7 @@
 		<DefaultItemExcludes>packages/**</DefaultItemExcludes>
 		<AppOutputBase>$(MSBuildProjectDirectory)\</AppOutputBase>
 		<PathMap>$(AppOutputBase)=.\</PathMap>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<!-- OS Detection -->
@@ -118,6 +119,7 @@
 		<Message Text="Copying .dll and manifest to mods folder." Importance="high" />
 		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModsPath)$(MSBuildProjectName)/" />
 		<Copy SourceFiles="DisplayOrbs.json" DestinationFolder="$(ModsPath)$(MSBuildProjectName)/" />
+		<Copy SourceFiles="$(TargetDir)\DisplayOrbs.xml" DestinationFolder="$(ModsPath)$(MSBuildProjectName)/" />
 		<Message Text="Copying BaseLib to mods folder." Importance="high" />
 		<ItemGroup>
 			<BaseLibFiles Include="$(NuGetPackageRoot)/alchyr.sts2.baselib/**/lib/**/BaseLib.dll;$(NuGetPackageRoot)/alchyr.sts2.baselib/**/Content/BaseLib.pck;$(NuGetPackageRoot)/alchyr.sts2.baselib/**/Content/BaseLib.json;" />

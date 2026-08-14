@@ -16,8 +16,14 @@ using MegaCrit.Sts2.Core.Runs;
 
 namespace DisplayOrbs.DisplayOrbsCode.Orbs;
 
+/// <summary>
+/// Manages the DisplayOrbs for all characters.
+/// </summary>
 public static class DisplayOrbManager
 {
+    /// <summary>
+    /// The default max orb capacity.
+    /// </summary>
     public const int DefaultMaxOrbCapacity = 10;
 
     private static readonly Logger logger = new Logger(MainFile.ModId, LogType.Generic);
@@ -42,7 +48,7 @@ public static class DisplayOrbManager
     /// <summary>
     /// Set the maximun number of DisplayOrb slots for a player (min 10). Does not affect real orbs.
     /// </summary>
-    /// <remarks>Must be applied each combat.</remarks>
+    /// <remarks>Must be applied each combat (Recommended to use <see cref="CombatManager.Instance"/>.CombatSetUp event).</remarks>
     /// <param name="player">The player to set for.</param>
     /// <param name="maxOrbSlots">The maximun number of orb slots that can be active.</param>
     public static void SetMaxDisplayOrbSlots(Player player, int maxOrbSlots)

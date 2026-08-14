@@ -1,10 +1,20 @@
-﻿namespace DisplayOrbs.DisplayOrbsCode.Orbs;
+﻿using MegaCrit.Sts2.Core.Models;
 
+namespace DisplayOrbs.DisplayOrbsCode.Orbs;
+
+/// <summary>
+/// Interface for any <see cref="AbstractModel"/> that wants to use Display Orbs.
+/// </summary>
+/// <typeparam name="T">The type of <see cref="DisplayOrbModel"/> to be generated.</typeparam>
 public interface IDisplayOrbGenerator<T> : IDisplayOrbGenerator where T : DisplayOrbModel
 {
 
 }
 
+/// <summary>
+/// Non-generic interface for any <see cref="AbstractModel"/> that wants to use Display Orbs.
+/// </summary>
+/// <remarks>WARNING: The generic version of this <see langword="interface"/> interface should be used instead.</remarks>
 public interface IDisplayOrbGenerator
 {
     /// <summary>

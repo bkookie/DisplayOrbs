@@ -2,6 +2,7 @@
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Nodes.Orbs;
 
+namespace DisplayOrbs.DisplayOrbsCode.Patches;
 
 [HarmonyPatch(typeof(NOrbManager), nameof(NOrbManager.UpdateControllerNavigation))]
 public static class UpdateControllerNavigationPatch

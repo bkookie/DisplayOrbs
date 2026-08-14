@@ -14,6 +14,11 @@ public class OrderedTaskQueue
 
     private Task _lastTask = Task.CompletedTask;
 
+    /// <summary>
+    /// Queues up a <see cref="Task"/>.
+    /// </summary>
+    /// <param name="work">The <see cref="Task"/> to enqueue.</param>
+    /// <returns>The completed <see cref="Task"/>.</returns>
     public async Task EnqueueAsync(Func<Task> work)
     {
         TaskCompletionSource tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
