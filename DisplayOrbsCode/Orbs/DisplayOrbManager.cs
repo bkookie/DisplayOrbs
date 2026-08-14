@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Orbs;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
@@ -227,14 +228,21 @@ public static class DisplayOrbManager
         }
     }
 
+    /// <inheritdoc cref="EvokeDisplayOrb{T}(Player, bool, Creature[])"/>
+    public static bool EvokeDisplayOrb<T>(Player player, bool removeCapacity) where T : DisplayOrbModel
+    {
+        return EvokeDisplayOrb<T>(player, removeCapacity, []);
+    }
+
     /// <summary>
     /// Evokes a DisplayOrb. Does not process hooks.
     /// </summary>
     /// <typeparam name="T">The type of the orb.</typeparam>
     /// <param name="player">The player who's orb you are trying to evoke.</param>
     /// <param name="removeCapacity">If <see langword="true"/>, also removes an orb slot.</param>
+    /// <param name="targets">The <see cref="Creature"/> array to serve as targets for orb evoke VFX. Passing <see langword="null"/> will skip VFX.</param>
     /// <returns>Returns <see langword="true"/> if an orb was evoked.</returns>
-    public static bool EvokeDisplayOrb<T>(Player player, bool removeCapacity) where T : DisplayOrbModel
+    public static bool EvokeDisplayOrb<T>(Player player, bool removeCapacity, Creature[] targets) where T : DisplayOrbModel
     {
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
         NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
@@ -247,6 +255,7 @@ public static class DisplayOrbManager
         if (removedIndex >= 0)
         {
             OrbModel removedOrb = orbQueue._orbs[removedIndex];
+            removedOrb.ActivateEvoke(targets);
 
             orbQueue.Remove(removedOrb);
             nOrbMan.EvokeOrbAnim(removedOrb);
