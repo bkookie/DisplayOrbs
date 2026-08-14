@@ -8,7 +8,6 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Orbs;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
-using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Orbs;
@@ -105,17 +104,11 @@ public static class DisplayOrbManager
         OrbGenerators.Remove((player, orbGenerator));
     }
 
-    /// <inheritdoc cref="RefreshAllOrbs(PlayerChoiceContext?, Player)"/>
-    public static void RefreshAllOrbs(Player player)
-    {
-        RefreshAllOrbs(null, player);
-    }
-
     /// <summary>
     /// Refreshes all registered DisplayOrbs for the supplied <paramref name="player"/>.
     /// </summary>
     /// <param name="player">The player to refresh DisplayOrbs for.</param>
-    public static void RefreshAllOrbs(PlayerChoiceContext? choiceContext, Player player)
+    public static void RefreshAllOrbs(Player player)
     {
         if (CombatManager.Instance.IsOverOrEnding)
             return;
@@ -135,7 +128,7 @@ public static class DisplayOrbManager
                     if (kvp.Key.player == player)
                     {
                         //_ = taskQueue.EnqueueAsync(() => (Task)kvp.Value.Invoke(null, [choiceContext, kvp.Key.player, orbGen])!); // Calls the generic RefreshOrbs<T>
-                        needRefresh = (bool)kvp.Value.Invoke(null, [choiceContext, kvp.Key.player, orbGen])!; // Calls the generic RefreshOrbs<T>
+                        needRefresh = (bool)kvp.Value.Invoke(null, [kvp.Key.player, orbGen])!; // Calls the generic RefreshOrbs<T>
                     }
 
                     if (orbGen.ShouldDeregister)
@@ -151,7 +144,7 @@ public static class DisplayOrbManager
         }
     }
 
-    private static bool RefreshOrbs<T>(PlayerChoiceContext? choiceContext, Player? player, IDisplayOrbGenerator<T> orbGenerator) where T : DisplayOrbModel
+    private static bool RefreshOrbs<T>(Player? player, IDisplayOrbGenerator<T> orbGenerator) where T : DisplayOrbModel
     {
         OrbQueue? orbQueue = player?.PlayerCombatState?.OrbQueue;
 
@@ -166,11 +159,9 @@ public static class DisplayOrbManager
         // Add or remove orbs to match power amount
         if (currentNumOrbs < preferredNumOrbs)
         {
-            choiceContext ??= new BlockingPlayerChoiceContext();
-
             for (int i = currentNumOrbs; i < preferredNumOrbs && i < MaxDisplayOrbSlotsByPlayer(player); i++) // No point to channel more than 10 orbs
             {
-                ChannelDisplayOrb<T>(choiceContext, player);
+                ChannelDisplayOrb<T>(player);
             }
         }
         else if (currentNumOrbs > preferredNumOrbs)
@@ -206,7 +197,7 @@ public static class DisplayOrbManager
     /// </summary>
     /// <typeparam name="T">The type of the orb.</typeparam>
     /// <param name="player">The player who is channeling the orb.</param>
-    public static void ChannelDisplayOrb<T>(PlayerChoiceContext choiceContext, Player player) where T : DisplayOrbModel
+    public static void ChannelDisplayOrb<T>(Player player) where T : DisplayOrbModel
     {
         OrbQueue? orbQueue = player.PlayerCombatState?.OrbQueue;
         NOrbManager? nOrbMan = NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager;
