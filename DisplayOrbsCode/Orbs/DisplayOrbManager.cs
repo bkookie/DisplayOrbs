@@ -31,17 +31,21 @@ public static class DisplayOrbManager
     static DisplayOrbManager()
     {
         // Mods should use CombatManager.Instance.CombatStarted to call SetMaxDisplayOrbSlots()
-        RunManager.Instance.RunStarted += _ => Reset();
-        CombatManager.Instance.CombatEnded += _ => Reset();
+        RunManager.Instance.RunStarted += _ => Reset(true);
+        CombatManager.Instance.CombatSetUp += _ => Reset(false);
+        CombatManager.Instance.CombatEnded += _ => Reset(true);
     }
 
     private static readonly Dictionary<Player, int> MaxDisplayOrbSlots = [];
     private static readonly Dictionary<(Player player, IDisplayOrbGenerator orbGenerator), MethodInfo> OrbGenerators = [];
     //private static readonly OrderedTaskQueue taskQueue = new OrderedTaskQueue();
 
-    private static void Reset()
+    private static void Reset(bool fullReset)
     {
-        MaxDisplayOrbSlots.Clear();
+        if (fullReset)
+        {
+            MaxDisplayOrbSlots.Clear(); // Player may set this during the same callback, and dont want to overwrite
+        }
         OrbGenerators.Clear();
     }
 
@@ -189,7 +193,7 @@ public static class DisplayOrbManager
         if (orbQueue != null && nOrbMan != null)
         {
             List<OrbModel> orbs = [.. orbQueue._orbs];
-            List<OrbModel> nOrbs = [.. nOrbMan._orbs.Select(nOrb => nOrb.Model)];
+            List<OrbModel?> nOrbs = [.. nOrbMan._orbs.Select(nOrb => nOrb.Model)];
 
             if (!Enumerable.SequenceEqual(orbs, nOrbs))
             {
